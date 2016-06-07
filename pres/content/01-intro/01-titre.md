@@ -1,1 +1,1 @@
-# Introduction aux techniques d'exploitation modernes
+# Introduction aux techniques modernes d'exploitation binaire

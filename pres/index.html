@@ -1,0 +1,391 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/solarized.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				
+<section>
+<section data-markdown>
+<script type="text/template">
+# Introduction aux techniques modernes d'exploitation binaire
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Sujets
+
+ * Rétro-ingénierie
+ * Exploitation
+ * x86, x86_64
+ * *Return-Oriented Programming*
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Plan
+
+ * Présentation de l'application cible
+   * Rétro-ingénierie
+ * *Segmentation Fault* et retour sur la convention d'appel GNU/Linux x86
+ * Exploitation simple
+ * Protection de segments de mémoire
+ * Réutilisation de code (*Ret2libc*)
+ * Réutilisation de segments de code (*ROP*)
+
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Cheminement
+
+ 1. Application cible 32 bits
+ 1. Analyse d'un<!-- .element: class="fragment" data-fragment-index="1" --> *Segmentation fault* <!-- .element: class="fragment" data-fragment-index="1" -->
+ 1. Developpement d'un exploit simple avec injection de code <!-- .element: class="fragment" data-fragment-index="1" -->
+ 1. Recompilation avec le bit <!-- .element: class="fragment" data-fragment-index="1" --> `NX` activé <!-- .element: class="fragment" data-fragment-index="1" -->
+ 1. Exploit sans injection de code <!-- .element: class="fragment" data-fragment-index="1" -->
+ 1. Recompilation en 64 bits (Changement de la convention d'appel) <!-- .element: class="fragment" data-fragment-index="1" -->
+ 1. Exploitation en utilisant le *ROP*
+
+</script>
+</section>
+</section>
+
+<section>
+<section data-markdown>
+<script type="text/template">
+## Cible
+
+Version réécrite du défi TVStation du *Securityfest CTF*.
+
+</script>
+</section>
+<section>
+<script type="text/javascript" src="https://asciinema.org/a/3cqpt9q0c6c1lqatqwxbceqzp.js"
+	id="asciicast-3cqpt9q0c6c1lqatqwxbceqzp" async data-autoplay="false" data-size="big" data-preload="false"
+	data-theme="solarized-light"></script>
+
+</section>
+<section data-markdown>
+<script type="text/template">
+### Voyez vous ce qui cloche?
+![tototo](res/disass-menu.jpg)
+
+</script>
+</section>
+<section>
+<script type="text/javascript" src="https://asciinema.org/a/386o6vxucae3i8lwhdtehvva5.js"
+	id="asciicast-386o6vxucae3i8lwhdtehvva5" async data-autoplay="false" data-size="big" data-preload="false"
+	data-theme="solarized-light"></script>
+
+</section>
+</section>
+
+<section>
+<section data-markdown>
+<script type="text/template">
+## Segfault
+
+![crash.jpg](res/core.jpg)
+
+Pointeur d'instruction sur 0x41414141
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Convention d'appel GNU/Linux x86
+
+* Paramètres sont passés sur la pile
+* Sauvegarde du cadre d'activation (*Stack Frame*) sur la pile. (*saved BP*)
+* Adresse de retour des fonctions sur la pile (*saved IP*)
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### En détail
+
+1. On pousse les arguments sur la pile (dans l'ordre inverse)
+2. `call`
+  1. On `push` l'adresse de la prochaine instruction (adresse de retour)
+  1. On `push` l'adresse de base du cadre d'activation
+  2. On change le pointeur d'instruction pour l'adresse spécifiée
+  3. On exécute le sous-programme
+  4. On `pop` l'adresse de base du cadre sauvegardé dans `ebp`
+  4. On `pop` l'adresse de la prochaine instruction dans `eip`
+3. On continue l'exécution normalement
+
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Dessin stack avant call et dans sous-programme
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Dessins stack avant return, après return
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### Contenu de la pile dans debug_func
+![Stack elements](res/stack-debug-annot.jpg)
+![Stack elements](res/stack-debug-overflow-annot.jpg) <!-- .element: class="fragment" data-fragment-index="1" -->
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Dessin stack overflowed au return
+
+</script>
+</section>
+</section>
+
+<section>
+<section data-markdown>
+<script type="text/template">
+### Controler l'exécution
+
+* Nous contrôlons la restoration du pointeur d'instruction
+* Et si nous y placions une adresse de la pile...<!-- .element: class="fragment" data-fragment-index="1" -->
+* de notre<!-- .element: class="fragment" data-fragment-index="2" --> *input*...<!-- .element: class="fragment" data-fragment-index="2" -->
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Asciinema exploit
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Ce qui s'est passé
+Dessin de stack avec retour dans notre buffer.
+
+</script>
+</section>
+</section>
+
+<section>
+<section data-markdown>
+<script type="text/template">
+## Protection des zones mémoires
+
+De nos jours les systèmes d'exploitation marquent les secteurs mémoires avec `rwx`.
+La pile est justement `rw-`.
+
+De cette façon, il est impossible d'injecter du nouveau code à exécuter dans les variables
+locales.
+
+Sur Linux, cette protection s'appelle *NX* (*No Exec Stack*) et sur Windows *DEP* (*Data Execution Prevention*).
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Conséquences sur notre exploit
+
+* Si le pointeur d'instruction pointe sur un secteur qui n'est pas exécutable: *Segfault*!
+* La pile, et donc notre *input* n'est plus exécutable.
+* Exploit absolument plus fonctionnel. `=/`
+
+</script>
+</section>
+</section>
+
+<section>
+<section data-markdown>
+<script type="text/template">
+## Ret2libc
+
+Voici deux idées intéressantes:
+* Les cadres d'appels sur la pile n'ont pas besoin de droit d'exécution pour fonctionner.
+* Pas besoin d'injecter du code... tout est déjà dans la libc!
+
+**On peut donc tenter de forger un cadre d'appel intéressant!**
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Ret2libc - suite
+
+* On peut toujours contrôler l'adresse de retour
+* Les arguments sont normalement placés sur la pile **avant** l'adresse de retour.
+
+Objectif:
+
+Retourner dans `__libc_system` avec les bons arguments (`"/bin/sh"`, clairement)
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Ret2libc - Exploit
+
+Il nous faut:
+
+ * L'adresse de `__libc_system`
+ * Un pointeur vers `"/bin/sh"`
+
+``` bash
+$ nm -D libc6.so | grep __libc_system
+0003e3e0 T __libc_system
+```
+
+``` bash
+$ strings --radix=x libc.so | grep "/bin/sh"
+15f771 /bin/sh
+```
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Ret2libc - Exploit - suite
+
+Dessin de stack de ce qu'on veut comme setup
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Ret2libc - Exploit - payload
+
+``` python
+# Code de l'exploit
+``` 
+
+</script>
+</section>
+</section>
+
+<section>
+<section data-markdown>
+<script type="text/template">
+## x86_64
+
+Changements à la convention d'appel:
+
+Les 6 premiers arguments sont passés via les registres `%rdi, %rsi, %rdx, %rcx, %r8 and %r9`
+
+Il ne suffit plus de mettre notre pointeur vers `"/bin/sh"`.
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Return-Oriented Programming
+
+Utilisation de séquences d'instructions machine appellés *gadgets*.
+Chaque *gadget* se termine par un `return` et existe déjà dans les segments exécutables du code binaire de l'application.
+En chaînant ces gadgets, l'attaquant peut exécuter des opérations arbitraires sans injecter de code additionnel.
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## ROP - Exploit
+
+Nous devons donc placer notre pointeur dans `rdi` en ayant contrôle que du contenu de la pile.
+
+L'instruction `pop` fait *exactement* ça.
+
+Gadget cible:
+``` asm
+pop rdi
+ret
+```
+
+Plus qu'à avoir le pointeur de pile qui pointe sur notre pointeur vers `"/bin/sh"` et le tour est joué.
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Résultat
+
+``` python
+copy pasta du code
+```
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Trace de l'exploit
+
+Dessin de l'exécution
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Trace de l'exploit
+
+GDB script pour voir les returns successifs
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Une ROP-chain plus réaliste
+
+Exemple d'une ROP-chain de execve ou read/write/reboot.
+
+</script>
+</section>
+</section>
+
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				history: true,
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>

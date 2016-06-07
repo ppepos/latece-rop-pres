@@ -1,4 +1,4 @@
 all: compile
 
 compile:
-	bash make.sh
+	python make.py
