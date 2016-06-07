@@ -48,7 +48,7 @@
 ## Plan
 
  * Présentation de l'application cible
-   * Rétro-ingénierie
+ * Rétro-ingénierie
  * *Segmentation Fault* et retour sur la convention d'appel GNU/Linux x86
  * Exploitation simple
  * Protection de segments de mémoire
@@ -86,20 +86,34 @@ Version réécrite du défi TVStation du *Securityfest CTF*.
 <section>
 <script type="text/javascript" src="https://asciinema.org/a/3cqpt9q0c6c1lqatqwxbceqzp.js"
 	id="asciicast-3cqpt9q0c6c1lqatqwxbceqzp" async data-autoplay="false" data-size="big" data-preload="false"
-	data-theme="solarized-light"></script>
+	data-theme="solarized-light" class="stretch"></script>
 
 </section>
 <section data-markdown>
 <script type="text/template">
-### Voyez vous ce qui cloche?
+### Voyez-vous ce qui cloche?
 ![tototo](res/disass-menu.jpg)
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### Voyez-vous mieux ce qui cloche?
+![tototo](res/disass-menu-2.jpg)
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### HEIN?!
+![tototo](res/disass-menu-3.jpg)
 
 </script>
 </section>
 <section>
 <script type="text/javascript" src="https://asciinema.org/a/386o6vxucae3i8lwhdtehvva5.js"
 	id="asciicast-386o6vxucae3i8lwhdtehvva5" async data-autoplay="false" data-size="big" data-preload="false"
-	data-theme="solarized-light"></script>
+	data-theme="solarized-light" class="stretch"></script>
 
 </section>
 </section>
@@ -129,15 +143,13 @@ Pointeur d'instruction sur 0x41414141
 <script type="text/template">
 ### En détail
 
-1. On pousse les arguments sur la pile (dans l'ordre inverse)
+1.  `push` les arguments sur la pile (dans l'ordre inverse)
 2. `call`
-  1. On `push` l'adresse de la prochaine instruction (adresse de retour)
-  1. On `push` l'adresse de base du cadre d'activation
-  2. On change le pointeur d'instruction pour l'adresse spécifiée
-  3. On exécute le sous-programme
-  4. On `pop` l'adresse de base du cadre sauvegardé dans `ebp`
-  4. On `pop` l'adresse de la prochaine instruction dans `eip`
-3. On continue l'exécution normalement
+  1.  `push` l'adresse de la prochaine instruction (adresse de retour)
+  2.  change le pointeur d'instruction pour l'adresse spécifiée
+  3.  exécute le sous-programme
+  4.  `pop` l'adresse de la prochaine instruction dans `eip`
+3.  continue l'exécution normalement
 
 
 </script>
@@ -162,12 +174,6 @@ Pointeur d'instruction sur 0x41414141
 
 </script>
 </section>
-<section data-markdown>
-<script type="text/template">
-## Dessin stack overflowed au return
-
-</script>
-</section>
 </section>
 
 <section>
@@ -176,8 +182,8 @@ Pointeur d'instruction sur 0x41414141
 ### Controler l'exécution
 
 * Nous contrôlons la restoration du pointeur d'instruction
-* Et si nous y placions une adresse de la pile...<!-- .element: class="fragment" data-fragment-index="1" -->
-* de notre<!-- .element: class="fragment" data-fragment-index="2" --> *input*...<!-- .element: class="fragment" data-fragment-index="2" -->
+* Nous ne contrôlons que notre input
+* Notre input est la seule place par lequel on peut injecter du code
 
 </script>
 </section>
@@ -201,13 +207,14 @@ Dessin de stack avec retour dans notre buffer.
 <script type="text/template">
 ## Protection des zones mémoires
 
-De nos jours les systèmes d'exploitation marquent les secteurs mémoires avec `rwx`.
-La pile est justement `rw-`.
+Depuis l'introduction des MMU, les systèmes d'exploitation peuvent marquer certaines pages mémoires pour contrôler les
+accès en lecture ou en écriture à ces pages. Le processeur lève un signal lors d'un accès non-authorisé.
+
+En 2004, les premières version de systèmes d'exploitation qui contrôlaient les droit d'accès en exécution à des zones
+mémoires. (PaX et ExecShield sous Linux et DEP sous Windows)
 
 De cette façon, il est impossible d'injecter du nouveau code à exécuter dans les variables
 locales.
-
-Sur Linux, cette protection s'appelle *NX* (*No Exec Stack*) et sur Windows *DEP* (*Data Execution Prevention*).
 
 </script>
 </section>
@@ -215,9 +222,7 @@ Sur Linux, cette protection s'appelle *NX* (*No Exec Stack*) et sur Windows *DEP
 <script type="text/template">
 ## Conséquences sur notre exploit
 
-* Si le pointeur d'instruction pointe sur un secteur qui n'est pas exécutable: *Segfault*!
-* La pile, et donc notre *input* n'est plus exécutable.
-* Exploit absolument plus fonctionnel. `=/`
+Demo avec NX (segfault)
 
 </script>
 </section>
@@ -226,32 +231,37 @@ Sur Linux, cette protection s'appelle *NX* (*No Exec Stack*) et sur Windows *DEP
 <section>
 <section data-markdown>
 <script type="text/template">
-## Ret2libc
+### Controler l'exécution
 
-Voici deux idées intéressantes:
-* Les cadres d'appels sur la pile n'ont pas besoin de droit d'exécution pour fonctionner.
-* Pas besoin d'injecter du code... tout est déjà dans la libc!
-
-**On peut donc tenter de forger un cadre d'appel intéressant!**
+* Contrôle sur le pointeur d'instruction via l'adresse de retour <!-- .element: class="fragment highlight-green" data-fragment-index="1" -->
+* Injection de code par notre input <!-- .element: class="fragment highlight-red" data-fragment-index="2" -->
+* Paramètres sont passés par la pile <!-- .element: class="fragment" data-fragment-index="3" -->
 
 </script>
 </section>
 <section data-markdown>
 <script type="text/template">
-## Ret2libc - suite
+## Ret2libc
 
-* On peut toujours contrôler l'adresse de retour
-* Les arguments sont normalement placés sur la pile **avant** l'adresse de retour.
+* Trouver du code pour faire ce que l'on veut dans le code exécutable existant.
+* On a accès à n'importe quel segment de code exécutable.
+* libc!
 
 Objectif:
 
-Retourner dans `__libc_system` avec les bons arguments (`"/bin/sh"`, clairement)
+Retourner dans `__libc_system` avec les bons arguments (`"/bin/sh"`, clairement!)
 
 </script>
 </section>
 <section data-markdown>
 <script type="text/template">
 ## Ret2libc - Exploit
+
+On veut faire:
+
+``` C
+int system(const char *command);
+```
 
 Il nous faut:
 
@@ -276,6 +286,15 @@ $ strings --radix=x libc.so | grep "/bin/sh"
 
 Dessin de stack de ce qu'on veut comme setup
 
+| Details           | Pile              |
+|-------------------|-------------------|
+| input             | `AAAA` |
+| variable locale3  | `AAAA` |
+| variable locale2  | `AAAA` |
+| variable locale1  | `AAAA` |
+| adresse de retour | adresse de `__libc_system` |
+|                   | `char * ("/bin/sh")`|
+
 </script>
 </section>
 <section data-markdown>
@@ -297,9 +316,32 @@ Dessin de stack de ce qu'on veut comme setup
 
 Changements à la convention d'appel:
 
-Les 6 premiers arguments sont passés via les registres `%rdi, %rsi, %rdx, %rcx, %r8 and %r9`
+Les 6 premiers arguments sont passés via les registres `%rdi, %rsi, %rdx, %rcx, %r8 and %r9`.
 
-Il ne suffit plus de mettre notre pointeur vers `"/bin/sh"`.
+Gain de performance considérable par rapport à pousser les paramètres sur la pile.
+
+<!-- Il ne suffit plus de mettre notre pointeur vers `"/bin/sh"`.-->
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### Controler l'exécution
+
+* Contrôle sur le pointeur d'instruction via l'adresse de retour <!-- .element: class="fragment highlight-green" data-fragment-index="1" -->
+* Injection de code par notre input <!-- .element: class="fragment highlight-red" data-fragment-index="2" -->
+* Paramètres sont passés par la pile <!-- .element: class="fragment highlight-red" data-fragment-index="3" -->
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Contournement
+
+* Il faut passer notre paramètre par `%rdi`.
+* Il faut trouver comment changer la valeur de `%rdi`.
+* Avec de la chance sans effet de bord.
+
 
 </script>
 </section>
@@ -307,9 +349,9 @@ Il ne suffit plus de mettre notre pointeur vers `"/bin/sh"`.
 <script type="text/template">
 ## Return-Oriented Programming
 
-Utilisation de séquences d'instructions machine appellés *gadgets*.
+"Utilisation de séquences d'instructions machine appellés *gadgets*.
 Chaque *gadget* se termine par un `return` et existe déjà dans les segments exécutables du code binaire de l'application.
-En chaînant ces gadgets, l'attaquant peut exécuter des opérations arbitraires sans injecter de code additionnel.
+En chaînant ces gadgets, l'attaquant peut exécuter des opérations arbitraires sans injecter de code additionnel."
 
 </script>
 </section>
@@ -322,12 +364,21 @@ Nous devons donc placer notre pointeur dans `rdi` en ayant contrôle que du cont
 L'instruction `pop` fait *exactement* ça.
 
 Gadget cible:
-``` asm
+```
 pop rdi
 ret
 ```
 
-Plus qu'à avoir le pointeur de pile qui pointe sur notre pointeur vers `"/bin/sh"` et le tour est joué.
+Plus qu'à avoir le pointeur de pile qui pointe sur notre pointeur vers `"/bin/sh"`.
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## En détails
+
+1. Retourner sur `pop rdi ; ret` avec l'adresse de `"/bin/sh"` comme prochaine valeur sur la pile.
+2. Retourner sur `__libc_system`.
 
 </script>
 </section>
@@ -338,14 +389,6 @@ Plus qu'à avoir le pointeur de pile qui pointe sur notre pointeur vers `"/bin/s
 ``` python
 copy pasta du code
 ```
-
-</script>
-</section>
-<section data-markdown>
-<script type="text/template">
-## Trace de l'exploit
-
-Dessin de l'exécution
 
 </script>
 </section>

@@ -1,7 +1,9 @@
 ## Ret2libc
 
-Voici deux idées intéressantes:
-* Les cadres d'appels sur la pile n'ont pas besoin de droit d'exécution pour fonctionner.
-* Pas besoin d'injecter du code... tout est déjà dans la libc!
+* Trouver du code pour faire ce que l'on veut dans le code exécutable existant.
+* On a accès à n'importe quel segment de code exécutable.
+* libc!
 
-**On peut donc tenter de forger un cadre d'appel intéressant!**
+Objectif:
+
+Retourner dans `__libc_system` avec les bons arguments (`"/bin/sh"`, clairement!)

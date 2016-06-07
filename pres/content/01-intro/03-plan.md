@@ -1,7 +1,7 @@
 ## Plan
 
  * Présentation de l'application cible
-   * Rétro-ingénierie
+ * Rétro-ingénierie
  * *Segmentation Fault* et retour sur la convention d'appel GNU/Linux x86
  * Exploitation simple
  * Protection de segments de mémoire
